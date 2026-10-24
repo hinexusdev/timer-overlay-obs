@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Contador OBS</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Montserrat', sans-serif;
+            user-select: none;
+        }
+
+        .counter-card {
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(15, 17, 23, 0.85);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 24px;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+        }
+
+        .label {
+            color: #94a3b8;
+            font-size: 20px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .number {
+            font-size: 48px;
+            font-weight: 800;
+            color: #38bdf8;
+            min-width: 60px;
+            text-align: center;
+            text-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+            transition: transform 0.1s ease;
+        }
+
+        .bump {
+            transform: scale(1.15);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="counter-card" id="card">
+        <span class="label" id="label">Kills</span>
+        <span class="number" id="count">0</span>
+    </div>
+
+    <script>
+        let value = parseInt(localStorage.getItem('obs_counter') || '0', 10);
+        const countEl = document.getElementById('count');
+
+        function updateDisplay(animate = false) {
+            countEl.textContent = value;
+            localStorage.setItem('obs_counter', value);
+            if (animate) {
+                countEl.classList.add('bump');
+                setTimeout(() => countEl.classList.remove('bump'), 100);
+            }
+        }
+
+        updateDisplay();
+
+        // Controles por teclado:
+        // [+] o Flecha Arriba: Sumar
+        // [-] o Flecha Abajo: Restar
+        // [0] o [R]: Reiniciar
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '+' || e.key === 'ArrowUp' || e.code === 'NumpadAdd') {
+                value++;
+                updateDisplay(true);
+            } else if (e.key === '-' || e.key === 'ArrowDown' || e.code === 'NumpadSubtract') {
+                value = Math.max(0, value - 1);
+                updateDisplay(true);
+            } else if (e.key.toLowerCase() === 'r' || e.key === '0') {
+                value = 0;
+                updateDisplay(true);
+            }
+        });
+
+        // Escuchar cambios de otras pestañas o ventanas
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'obs_counter') {
+                value = parseInt(e.newValue || '0', 10);
+                updateDisplay(false);
+            }
+        });
+    </script>
+</body>
+
+</html>

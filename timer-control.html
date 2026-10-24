@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Control de Timer - OBS</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 320px;
+        }
+
+        h2 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+            color: #38bdf8;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        label {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        input[type="number"] {
+            width: 60px;
+            padding: 6px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #fff;
+            border-radius: 6px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        select {
+            flex: 1;
+            padding: 6px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #fff;
+            border-radius: 6px;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        button {
+            padding: 8px 12px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-start {
+            background: #22c55e;
+            color: #052e16;
+        }
+
+        .btn-start:hover {
+            background: #16a34a;
+        }
+
+        .btn-pause {
+            background: #eab308;
+            color: #422006;
+        }
+
+        .btn-pause:hover {
+            background: #ca8a04;
+        }
+
+        .btn-reset {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .btn-reset:hover {
+            background: #dc2626;
+        }
+
+        .btn-set {
+            background: #3b82f6;
+            color: #fff;
+        }
+
+        .btn-set:hover {
+            background: #2563eb;
+        }
+
+        .status {
+            font-size: 12px;
+            color: #64748b;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Control de Temporizador</h2>
+
+    <div class="row">
+        <div>
+            <label>Horas</label><br>
+            <input type="number" id="hours" min="0" value="4">
+        </div>
+        <div>
+            <label>Minutos</label><br>
+            <input type="number" id="minutes" min="0" max="59" value="0">
+        </div>
+        <div>
+            <label>Segundos</label><br>
+            <input type="number" id="seconds" min="0" max="59" value="0">
+        </div>
+    </div>
+
+    <div class="row">
+        <label for="mode">Modo:</label>
+        <select id="mode">
+            <option value="countdown">Descontar (Cuenta regresiva)</option>
+            <option value="countup">Incrementar (Hacia la meta)</option>
+        </select>
+    </div>
+
+    <button class="btn-set" id="btnSet">Aplicar Tiempo</button>
+
+    <div class="btn-grid">
+        <button class="btn-start" id="btnStart">Iniciar</button>
+        <button class="btn-pause" id="btnPause">Pausar</button>
+    </div>
+
+    <button class="btn-reset" id="btnReset">Reiniciar</button>
+    <div class="status" id="status">Listo</div>
+
+    <script>
+        const channel = new BroadcastChannel('obs_timer_sync');
+
+        let timerInterval = null;
+        let targetSeconds = 4 * 3600;
+        let currentSeconds = targetSeconds;
+        let mode = 'countdown';
+
+        function sync() {
+            const isFinished = mode === 'countdown' ? currentSeconds <= 0 : currentSeconds >= targetSeconds;
+            channel.postMessage({ seconds: currentSeconds, isFinished });
+        }
+
+        function applyInputs() {
+            const h = parseInt(document.getElementById('hours').value, 10) || 0;
+            const m = parseInt(document.getElementById('minutes').value, 10) || 0;
+            const s = parseInt(document.getElementById('seconds').value, 10) || 0;
+            targetSeconds = (h * 3600) + (m * 60) + s;
+            mode = document.getElementById('mode').value;
+
+            currentSeconds = mode === 'countdown' ? targetSeconds : 0;
+            clearInterval(timerInterval);
+            timerInterval = null;
+            document.getElementById('status').textContent = 'Configurado';
+            sync();
+        }
+
+        document.getElementById('btnSet').addEventListener('click', applyInputs);
+
+        document.getElementById('btnStart').addEventListener('click', () => {
+            if (timerInterval) return;
+            document.getElementById('status').textContent = 'En ejecución...';
+
+            timerInterval = setInterval(() => {
+                if (mode === 'countdown') {
+                    if (currentSeconds > 0) {
+                        currentSeconds--;
+                    } else {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                        document.getElementById('status').textContent = '¡Finalizado!';
+                    }
+                } else {
+                    if (currentSeconds < targetSeconds) {
+                        currentSeconds++;
+                    } else {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                        document.getElementById('status').textContent = '¡Meta alcanzada!';
+                    }
+                }
+                sync();
+            }, 1000);
+        });
+
+        document.getElementById('btnPause').addEventListener('click', () => {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            document.getElementById('status').textContent = 'Pausado';
+        });
+
+        document.getElementById('btnReset').addEventListener('click', () => {
+            applyInputs();
+        });
+
+        // Enviar estado inicial
+        applyInputs();
+    </script>
+</body>
+
+</html>

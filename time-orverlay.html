@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Gamer Timer Overlay OBS</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@700&display=swap');
+
+        :root {
+            --neon-green: #00ff66;
+            --neon-dim: rgba(0, 255, 102, 0.2);
+            --bg-dark: #0a0c0e;
+            --alert-red: #ff1e42;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: transparent;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            user-select: none;
+        }
+
+        /* Contenedor exterior con esquinas cortadas gamer */
+        .gamer-frame {
+            position: relative;
+            background: var(--bg-dark);
+            padding: 3px;
+            /* Corte diagonal en esquina superior izquierda e inferior derecha */
+            clip-path: polygon(18px 0, 100% 0,
+                    100% calc(100% - 18px), calc(100% - 18px) 100%,
+                    0 100%, 0 18px);
+            filter: drop-shadow(0 0 15px rgba(0, 255, 102, 0.35));
+        }
+
+        /* Borde verde neón exterior */
+        .gamer-frame::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, var(--neon-green) 0%, transparent 40%, transparent 60%, var(--neon-green) 100%);
+            pointer-events: none;
+        }
+
+        /* Panel interior */
+        .timer-inner {
+            position: relative;
+            background: linear-gradient(180deg, #11161b 0%, #080a0c 100%);
+            padding: 12px 32px 14px 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            clip-path: polygon(16px 0, 100% 0,
+                    100% calc(100% - 16px), calc(100% - 16px) 100%,
+                    0 100%, 0 16px);
+            border: 1px solid rgba(0, 255, 102, 0.15);
+            overflow: hidden;
+        }
+
+        /* Efecto sutil de scanlines CRT */
+        .timer-inner::after {
+            content: " ";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* Marcas tácticas de las esquinas */
+        .corner-tag {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: var(--neon-green);
+        }
+
+        .top-left {
+            top: 0;
+            left: 0;
+            clip-path: polygon(0 0, 100% 0, 0 100%);
+        }
+
+        .bottom-right {
+            bottom: 0;
+            right: 0;
+            clip-path: polygon(100% 0, 100% 100%, 0 100%);
+        }
+
+        /* Etiqueta superior del stream */
+        .header-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--neon-dim);
+            padding-bottom: 4px;
+            margin-bottom: 2px;
+        }
+
+        .badge {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--neon-green);
+            text-transform: uppercase;
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            box-shadow: 0 0 8px var(--neon-green);
+            animation: blink 1.2s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.2;
+            }
+        }
+
+        /* Tipografía y dígitos del contador */
+        .time-display {
+            font-family: 'Orbitron', monospace;
+            font-size: 52px;
+            font-weight: 900;
+            letter-spacing: 4px;
+            color: #ffffff;
+            text-shadow:
+                0 0 8px var(--neon-green),
+                0 0 20px rgba(0, 255, 102, 0.4);
+            font-variant-numeric: tabular-nums;
+            z-index: 1;
+        }
+
+        /* Estado de tiempo cumplido / alerta */
+        .finished .time-display {
+            color: #fff;
+            text-shadow: 0 0 12px var(--alert-red), 0 0 25px rgba(255, 30, 66, 0.8);
+        }
+
+        .finished .gamer-frame {
+            filter: drop-shadow(0 0 20px rgba(255, 30, 66, 0.7));
+        }
+
+        .finished .gamer-frame::before {
+            background: var(--alert-red);
+        }
+
+        .finished .corner-tag {
+            background: var(--alert-red);
+        }
+
+        .finished .badge,
+        .finished .live-dot {
+            color: var(--alert-red);
+            background: var(--alert-red);
+            box-shadow: 0 0 8px var(--alert-red);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="gamer-frame" id="frame">
+        <div class="timer-inner">
+            <div class="corner-tag top-left"></div>
+            <div class="corner-tag bottom-right"></div>
+
+            <div class="header-bar">
+                <span class="badge">STREAM SESSION</span>
+                <div class="live-dot"></div>
+            </div>
+
+            <span class="time-display" id="display">04:00:00</span>
+        </div>
+    </div>
+
+    <script>
+        const displayEl = document.getElementById('display');
+        const frameEl = document.getElementById('frame');
+        const channel = new BroadcastChannel('obs_timer_sync');
+
+        function formatTime(totalSeconds) {
+            const h = Math.floor(totalSeconds / 3600);
+            const m = Math.floor((totalSeconds % 3600) / 60);
+            const s = totalSeconds % 60;
+            return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
+        }
+
+        channel.onmessage = (event) => {
+            const { seconds, isFinished } = event.data;
+            displayEl.textContent = formatTime(seconds);
+
+            if (isFinished) {
+                document.body.classList.add('finished');
+            } else {
+                document.body.classList.remove('finished');
+            }
+        };
+    </script>
+</body>
+
+</html>
